@@ -13,7 +13,7 @@ const animations = {
 };
 
 // Current animation state
-let playerState = { file: animations.idle.file, frames: animations.idle.frames, speed: animations.idle.speed };
+let playerState = {};
 const dropdown = document.getElementById('animations')
 dropdown.addEventListener('change', function (e) {
     setAnimation(e.target.value);
@@ -42,7 +42,7 @@ function setAnimation(animationType) {
         console.error("Invalid animation type:", animationType);
     }
 }
-setAnimation("idle")
+setAnimation("idle") // initial animation type
 
 // Define animate function loop
 function animate() {
@@ -56,6 +56,7 @@ function animate() {
         CANVAS_WIDTH, CANVAS_HEIGHT);
 
     gameFrame++;
+    // Continue the animation frames loop
     requestAnimationFrame(animate);
 }
 animate();
