@@ -41,6 +41,8 @@ const spriteWidth = spriteHeight = 128;
 const spriteFactor = 0.5
 
 // Define movement variables
+let playerX = 35;
+let playerY = 450;
 let velocityX = 0;  // Horizontal velocity
 let velocityY = 0;  // Vertical velocity (gravity)
 let isJumping = false;  // Jumping state
@@ -53,6 +55,9 @@ const groundY = 463;  // Ground Y-position (adjust based on canvas)
 // Define the tile directory
 const tileDirectory = "assets/zone0/tiles/";
 const tileWidth = tileHeight = 48;
+// Store tile images globally so we don't reload them every frame
+const tileImages = new Map();
+
 
 // Define background image directory
 const backgroundImage = new Image();
@@ -64,57 +69,78 @@ backgroundImage.onload = () => {
 // Define frame (FPS) management
 let gameFrame = 0;
 
-// Function to load a level
+// Function to preload tile images
+async function preloadTileImages(graphical_map) {
+    const uniqueTileIds = [...new Set(graphical_map.filter(id => id !== 0))];
+
+    for (const tileId of uniqueTileIds) {
+        const tileImage = new Image();
+        tileImage.src = `${tileDirectory}tile${tileId}.png`;
+        await new Promise((resolve) => {
+            tileImage.onload = resolve;
+        });
+        tileImages.set(tileId, tileImage);
+    }
+}
+
+// Modified loadLevel function
 async function loadLevel(levelId) {
     // Fetch level JSON
     const response = await fetch(`assets/zone0/zone${levelId}.json`);
     levelData = await response.json();
 
     const { doors, columns, rows, pos_x, pos_y, graphical_map, collision_map, id } = levelData;
-
     console.log(`Loaded level ${id}`);
-    // console.log(pos_x, pos_y)
+
+    // Preload all tile images
+    await preloadTileImages(graphical_map);
+
+    // Store level data for reuse in drawing
+    levelData = {
+        doors,
+        columns,
+        rows,
+        graphical_map
+    };
+}
+
+// Function to draw the current level
+function drawLevel() {
+    if (!levelData) return;
+
+    const { doors, columns, rows, graphical_map } = levelData;
 
     // Draw graphical map
     for (let row = 0; row < rows; row++) {
         for (let col = 0; col < columns; col++) {
             const tileIndex = row * columns + col;
             const tileId = graphical_map[tileIndex];
-            // Handle 0's, empty tile spaces
+
+            // Skip empty tiles
             if (tileId === 0) continue;
 
-            // Draw tile
-            if (tileId !== undefined) {
-                const tileImage = new Image();
-                tileImage.src = `${tileDirectory}tile${tileId}.png`;
-                tileImage.onload = () => {
-                    ctx.drawImage(
-                        tileImage,
-                        col * tileWidth,
-                        row * tileHeight,
-                        tileWidth,
-                        tileHeight
-                    );
-                };
+            // Draw tile using preloaded image
+            const tileImage = tileImages.get(tileId);
+            if (tileImage) {
+                ctx.drawImage(
+                    tileImage,
+                    col * tileWidth,
+                    row * tileHeight,
+                    tileWidth,
+                    tileHeight
+                );
             }
         }
     }
 
     // Draw doors
     doors.forEach((door) => {
-        ctx.fillStyle = "rgba(0, 0, 255, 0.5)"; // Highlight doors (can be replaced with images)
+        ctx.fillStyle = "rgba(0, 0, 255, 0.5)";
         ctx.fillRect(door.x, door.y, door.width, door.height);
-
-        // Example: Load the destination zone when interacting with a door
-        // This should be replaced with actual player collision checks
-        console.log(`Door to zone ${door.destination_zone} at (${door.destination_x}, ${door.destination_y})`);
     });
-
-    // Handle collision map
-    // Use collision_map for collision detection in your game logic
-    console.log("Collision Map:", collision_map);
-
 }
+
+
 
 // Example: Load level 0
 loadLevel("00");
@@ -172,20 +198,35 @@ function setAnimation(animationType) {
         console.error("Invalid animation type:", animationType);
     }
 }
-setAnimation("idle") // initial animation type
 
-// Define animate function loop
+// Updated animate function
 function animate() {
-    // Create animation frames loop
-    let positon = Math.floor(gameFrame / playerState.speed) % playerState.frames
-    let frameX = spriteWidth * positon
+    // Handle input for movement
+    handleInput();
 
-    // ctx.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
-    ctx.drawImage(playerImage, frameX, 0, spriteWidth, spriteHeight, 35, 450,
+    // Update position based on velocities
+    updatePosition();
+
+    // Create animation frames loop
+    let position = Math.floor(gameFrame / playerState.speed) % playerState.frames;
+    let frameX = spriteWidth * position;
+
+    // Clear the canvas and redraw everything
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw background
+    ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+
+    // Draw level tiles
+    drawLevel();
+
+    // Draw player sprite
+    ctx.drawImage(playerImage, frameX, 0, spriteWidth, spriteHeight, playerX, playerY,
         spriteWidth * spriteFactor, spriteHeight * spriteFactor);
 
     gameFrame++;
-    // Continue the animation frames loop
     requestAnimationFrame(animate);
 }
+
+setAnimation("idle") // initial animation type
 animate();
