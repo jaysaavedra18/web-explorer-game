@@ -58,6 +58,8 @@ async function loadLevel(levelId) {
         for (let col = 0; col < columns; col++) {
             const tileIndex = row * columns + col;
             const tileId = graphical_map[tileIndex];
+            // Handle 0's, empty tile spaces
+            if (tileId === 0) continue;
 
             // Draw tile
             if (tileId !== undefined) {
