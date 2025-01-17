@@ -16,6 +16,18 @@ const animations = {
 let playerState = {};
 let levelData = null;
 
+// Manage key states to track input
+let keyStates = {}
+
+window.addEventListener("keydown", (e) => {
+    keyStates[e.key] = true;
+});
+
+window.addEventListener("keyup", (e) => {
+    keyStates[e.key] = false;
+});
+
+
 // Initialize the canvas with dimensions
 const canvas = document.getElementById('canvas1');
 const ctx = canvas.getContext('2d');
@@ -27,6 +39,16 @@ const playerImage = new Image();
 const spriteDirectory = "assets/sprites/Fighter/";
 const spriteWidth = spriteHeight = 128;
 const spriteFactor = 0.5
+
+// Define movement variables
+let velocityX = 0;  // Horizontal velocity
+let velocityY = 0;  // Vertical velocity (gravity)
+let isJumping = false;  // Jumping state
+let isOnGround = false;  // Ground check
+const gravity = 0.5;  // Gravity strength
+const jumpPower = -10;  // Jump force
+const walkSpeed = 3;  // Horizontal walking speed
+const groundY = 463;  // Ground Y-position (adjust based on canvas)
 
 // Define the tile directory
 const tileDirectory = "assets/zone0/tiles/";
@@ -96,6 +118,50 @@ async function loadLevel(levelId) {
 
 // Example: Load level 0
 loadLevel("00");
+
+// Handle user input for movement
+function handleInput() {
+    if (keyStates["ArrowRight"]) {
+        velocityX = walkSpeed;
+        setAnimation("walk"); // Change to walk animation
+    } else if (keyStates["ArrowLeft"]) {
+        velocityX = -walkSpeed;
+        setAnimation("walk"); // Change to walk animation
+    } else {
+        velocityX = 0;
+        setAnimation("idle"); // Idle animation when not moving
+    }
+
+    // Jumping logic
+    if (keyStates["Space"] && isOnGround && !isJumping) {
+        velocityY = jumpPower;
+        isJumping = true;
+        setAnimation("jump"); // Jump animation
+    }
+}
+
+// Update character position based on velocities
+function updatePosition() {
+    // Apply gravity
+    if (velocityY < 10) velocityY += gravity;  // Simulate falling
+    playerY += velocityY;
+
+    // Check for ground collision (basic check)
+    if (playerY > groundY) {
+        playerY = groundY;
+        velocityY = 0;
+        isOnGround = true;
+        isJumping = false;
+    } else {
+        isOnGround = false;
+    }
+
+    // Update horizontal position
+    playerX += velocityX;
+
+    // Prevent the character from moving out of bounds
+    playerX = Math.max(0, Math.min(canvas.width - spriteWidth, playerX));
+}
 
 // Define set animation function
 function setAnimation(animationType) {
