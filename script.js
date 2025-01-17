@@ -27,7 +27,7 @@ const CANVAS_HEIGHT = canvas.height = 600;
 
 // Define the playerImage and respective directory
 const playerImage = new Image();
-const spriteDirectory = "sprites/Fighter/";
+const spriteDirectory = "assets/sprites/Fighter/";
 playerImage.src = "";
 const spriteWidth = 128;
 const spriteHeight = 128;
