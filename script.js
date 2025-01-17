@@ -45,7 +45,7 @@ let gameFrame = 0;
 // Function to load a level
 async function loadLevel(levelId) {
     // Fetch level JSON
-    const response = await fetch(`zone${levelId}.json`);
+    const response = await fetch(`assets/zone0/zone${levelId}.json`);
     levelData = await response.json();
 
     const { doors, columns, rows, pos_x, pos_y, graphical_map, collision_map, id } = levelData;
@@ -113,8 +113,6 @@ function animate() {
     let frameX = spriteWidth * positon
 
     // ctx.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
-    // ctx.drawImage(playerImage, frameX, 0, spriteWidth, spriteHeight, pos_x, pos_y,
-    //     spriteWidth * spriteFactor, spriteHeight * spriteFactor);
     ctx.drawImage(playerImage, frameX, 0, spriteWidth, spriteHeight, 35, 450,
         spriteWidth * spriteFactor, spriteHeight * spriteFactor);
 
