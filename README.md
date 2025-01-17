@@ -1,1 +1,0 @@
-# web-explorer-game
