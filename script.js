@@ -1,5 +1,43 @@
-// Animation file map with frame count and speed
-const animations = {
+/***********************************
+ * Constants and Configurations
+ ***********************************/
+
+// Canvas Setup
+const canvas = document.getElementById('canvas1');
+const ctx = canvas.getContext('2d');
+const CANVAS_WIDTH = canvas.width = 572;
+const CANVAS_HEIGHT = canvas.height = 572;
+
+// Asset Directories
+const ASSET_PATHS = {
+    sprites: "assets/sprites/Fighter/",
+    tiles: "assets/zone0/tiles/",
+    background: 'assets/zone0/zone0-bg.jpg'
+};
+
+// Physics Constants
+const PHYSICS = {
+    gravity: 0.5,
+    jumpPower: -10,
+    walkSpeed: 3,
+    groundY: 463
+};
+
+// Sprite Constants
+const SPRITE = {
+    width: 128,
+    height: 128,
+    scale: 0.5
+};
+
+// Tile Constants
+const TILE = {
+    width: 48,
+    height: 48
+};
+
+// Animation Configurations
+const ANIMATIONS = {
     idle: { file: "Idle.png", frames: 6, speed: 5 },
     run: { file: "Run.png", frames: 8, speed: 3 },
     jump: { file: "Jump.png", frames: 10, speed: 2 },
@@ -12,221 +50,223 @@ const animations = {
     walk: { file: "Walk.png", frames: 8, speed: 4 }
 };
 
-// Declare playerState & levelData
-let playerState = {};
-let levelData = null;
+/***********************************
+ * Game State Management
+ ***********************************/
 
-// Manage key states to track input
-let keyStates = {}
+class GameState {
+    constructor() {
+        this.playerState = {};
+        this.levelData = null;
+        this.gameFrame = 0;
+        this.tileImages = new Map();
 
-window.addEventListener("keydown", (e) => {
-    keyStates[e.key] = true;
-});
+        // Player position and movement
+        this.player = {
+            x: 35,
+            y: 450,
+            velocityX: 0,
+            velocityY: 0,
+            isJumping: false,
+            isOnGround: false
+        };
 
-window.addEventListener("keyup", (e) => {
-    keyStates[e.key] = false;
-});
+        // Input handling
+        this.keyStates = {};
+        this.setupInputHandlers();
 
+        // Load images
+        this.playerImage = new Image();
+        this.backgroundImage = new Image();
+        this.loadBackgroundImage();
+    }
 
-// Initialize the canvas with dimensions
-const canvas = document.getElementById('canvas1');
-const ctx = canvas.getContext('2d');
-const CANVAS_WIDTH = canvas.width = 572;
-const CANVAS_HEIGHT = canvas.height = 572;
+    setupInputHandlers() {
+        window.addEventListener("keydown", (e) => this.keyStates[e.key] = true);
+        window.addEventListener("keyup", (e) => this.keyStates[e.key] = false);
+    }
 
-// Define the playerImage and respective directory
-const playerImage = new Image();
-const spriteDirectory = "assets/sprites/Fighter/";
-const spriteWidth = spriteHeight = 128;
-const spriteFactor = 0.5
-
-// Define movement variables
-let playerX = 35;
-let playerY = 450;
-let velocityX = 0;  // Horizontal velocity
-let velocityY = 0;  // Vertical velocity (gravity)
-let isJumping = false;  // Jumping state
-let isOnGround = false;  // Ground check
-const gravity = 0.5;  // Gravity strength
-const jumpPower = -10;  // Jump force
-const walkSpeed = 3;  // Horizontal walking speed
-const groundY = 463;  // Ground Y-position (adjust based on canvas)
-
-// Define the tile directory
-const tileDirectory = "assets/zone0/tiles/";
-const tileWidth = tileHeight = 48;
-// Store tile images globally so we don't reload them every frame
-const tileImages = new Map();
-
-
-// Define background image directory
-const backgroundImage = new Image();
-backgroundImage.src = 'assets/zone0/zone0-bg.jpg';
-backgroundImage.onload = () => {
-    ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
-};
-
-// Define frame (FPS) management
-let gameFrame = 0;
-
-// Function to preload tile images
-async function preloadTileImages(graphical_map) {
-    const uniqueTileIds = [...new Set(graphical_map.filter(id => id !== 0))];
-
-    for (const tileId of uniqueTileIds) {
-        const tileImage = new Image();
-        tileImage.src = `${tileDirectory}tile${tileId}.png`;
-        await new Promise((resolve) => {
-            tileImage.onload = resolve;
-        });
-        tileImages.set(tileId, tileImage);
+    loadBackgroundImage() {
+        this.backgroundImage.src = ASSET_PATHS.background;
+        this.backgroundImage.onload = () => {
+            ctx.drawImage(this.backgroundImage, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        };
     }
 }
 
-// Modified loadLevel function
-async function loadLevel(levelId) {
-    // Fetch level JSON
-    const response = await fetch(`assets/zone0/zone${levelId}.json`);
-    levelData = await response.json();
+/***********************************
+ * Level Management
+ ***********************************/
 
-    const { doors, columns, rows, pos_x, pos_y, graphical_map, collision_map, id } = levelData;
-    console.log(`Loaded level ${id}`);
+class LevelManager {
+    static async preloadTileImages(graphical_map, gameState) {
+        const uniqueTileIds = [...new Set(graphical_map.filter(id => id !== 0))];
 
-    // Preload all tile images
-    await preloadTileImages(graphical_map);
-
-    // Store level data for reuse in drawing
-    levelData = {
-        doors,
-        columns,
-        rows,
-        graphical_map
-    };
-}
-
-// Function to draw the current level
-function drawLevel() {
-    if (!levelData) return;
-
-    const { doors, columns, rows, graphical_map } = levelData;
-
-    // Draw graphical map
-    for (let row = 0; row < rows; row++) {
-        for (let col = 0; col < columns; col++) {
-            const tileIndex = row * columns + col;
-            const tileId = graphical_map[tileIndex];
-
-            // Skip empty tiles
-            if (tileId === 0) continue;
-
-            // Draw tile using preloaded image
-            const tileImage = tileImages.get(tileId);
-            if (tileImage) {
-                ctx.drawImage(
-                    tileImage,
-                    col * tileWidth,
-                    row * tileHeight,
-                    tileWidth,
-                    tileHeight
-                );
-            }
+        for (const tileId of uniqueTileIds) {
+            const tileImage = new Image();
+            tileImage.src = `${ASSET_PATHS.tiles}tile${tileId}.png`;
+            await new Promise((resolve) => {
+                tileImage.onload = resolve;
+            });
+            gameState.tileImages.set(tileId, tileImage);
         }
     }
 
-    // Draw doors
-    doors.forEach((door) => {
-        ctx.fillStyle = "rgba(0, 0, 255, 0.5)";
-        ctx.fillRect(door.x, door.y, door.width, door.height);
-    });
-}
+    static async loadLevel(levelId, gameState) {
+        const response = await fetch(`assets/zone0/zone${levelId}.json`);
+        const data = await response.json();
 
+        console.log(`Loaded level ${data.id}`);
 
-
-// Example: Load level 0
-loadLevel("00");
-
-// Handle user input for movement
-function handleInput() {
-    if (keyStates["ArrowRight"]) {
-        velocityX = walkSpeed;
-        setAnimation("walk"); // Change to walk animation
-    } else if (keyStates["ArrowLeft"]) {
-        velocityX = -walkSpeed;
-        setAnimation("walk"); // Change to walk animation
-    } else {
-        velocityX = 0;
-        setAnimation("idle"); // Idle animation when not moving
+        await this.preloadTileImages(data.graphical_map, gameState);
+        gameState.levelData = {
+            doors: data.doors,
+            columns: data.columns,
+            rows: data.rows,
+            graphical_map: data.graphical_map
+        };
     }
 
-    // Jumping logic
-    if (keyStates["Space"] && isOnGround && !isJumping) {
-        velocityY = jumpPower;
-        isJumping = true;
-        setAnimation("jump"); // Jump animation
-    }
-}
+    static drawLevel(gameState) {
+        if (!gameState.levelData) return;
 
-// Update character position based on velocities
-function updatePosition() {
-    // Apply gravity
-    if (velocityY < 10) velocityY += gravity;  // Simulate falling
-    playerY += velocityY;
+        const { doors, columns, rows, graphical_map } = gameState.levelData;
 
-    // Check for ground collision (basic check)
-    if (playerY > groundY) {
-        playerY = groundY;
-        velocityY = 0;
-        isOnGround = true;
-        isJumping = false;
-    } else {
-        isOnGround = false;
-    }
+        // Draw tiles
+        for (let row = 0; row < rows; row++) {
+            for (let col = 0; col < columns; col++) {
+                const tileIndex = row * columns + col;
+                const tileId = graphical_map[tileIndex];
 
-    // Update horizontal position
-    playerX += velocityX;
+                if (tileId === 0) continue;
 
-    // Prevent the character from moving out of bounds
-    playerX = Math.max(0, Math.min(canvas.width - spriteWidth, playerX));
-}
+                const tileImage = gameState.tileImages.get(tileId);
+                if (tileImage) {
+                    ctx.drawImage(
+                        tileImage,
+                        col * TILE.width,
+                        row * TILE.height,
+                        TILE.width,
+                        TILE.height
+                    );
+                }
+            }
+        }
 
-// Define set animation function
-function setAnimation(animationType) {
-    if (animations[animationType]) {
-        playerState = animations[animationType];
-        playerImage.src = spriteDirectory + playerState.file;
-    } else {
-        console.error("Invalid animation type:", animationType);
+        // Draw doors
+        doors.forEach((door) => {
+            ctx.fillStyle = "rgba(0, 0, 255, 0.5)";
+            ctx.fillRect(door.x, door.y, door.width, door.height);
+        });
     }
 }
 
-// Updated animate function
-function animate() {
-    // Handle input for movement
-    handleInput();
+/***********************************
+ * Player Management
+ ***********************************/
 
-    // Update position based on velocities
-    updatePosition();
+class PlayerManager {
+    static handleInput(gameState) {
+        const { keyStates, player } = gameState;
 
-    // Create animation frames loop
-    let position = Math.floor(gameFrame / playerState.speed) % playerState.frames;
-    let frameX = spriteWidth * position;
+        // Horizontal movement
+        if (keyStates["ArrowRight"]) {
+            player.velocityX = PHYSICS.walkSpeed;
+            this.setAnimation(gameState, "walk");
+        } else if (keyStates["ArrowLeft"]) {
+            player.velocityX = -PHYSICS.walkSpeed;
+            this.setAnimation(gameState, "walk");
+        } else {
+            player.velocityX = 0;
+            this.setAnimation(gameState, "idle");
+        }
 
-    // Clear the canvas and redraw everything
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Jump handling
+        if (keyStates["Space"] && player.isOnGround && !player.isJumping) {
+            player.velocityY = PHYSICS.jumpPower;
+            player.isJumping = true;
+            this.setAnimation(gameState, "jump");
+        }
+    }
 
-    // Draw background
-    ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+    static updatePosition(gameState) {
+        const { player } = gameState;
 
-    // Draw level tiles
-    drawLevel();
+        // Vertical movement (gravity)
+        if (player.velocityY < 10) {
+            player.velocityY += PHYSICS.gravity;
+        }
+        player.y += player.velocityY;
 
-    // Draw player sprite
-    ctx.drawImage(playerImage, frameX, 0, spriteWidth, spriteHeight, playerX, playerY,
-        spriteWidth * spriteFactor, spriteHeight * spriteFactor);
+        // Ground collision
+        if (player.y > PHYSICS.groundY) {
+            player.y = PHYSICS.groundY;
+            player.velocityY = 0;
+            player.isOnGround = true;
+            player.isJumping = false;
+        } else {
+            player.isOnGround = false;
+        }
 
-    gameFrame++;
-    requestAnimationFrame(animate);
+        // Horizontal movement with bounds checking
+        player.x += player.velocityX;
+        player.x = Math.max(0, Math.min(CANVAS_WIDTH - SPRITE.width, player.x));
+    }
+
+    static setAnimation(gameState, animationType) {
+        if (ANIMATIONS[animationType]) {
+            gameState.playerState = ANIMATIONS[animationType];
+            gameState.playerImage.src = ASSET_PATHS.sprites + gameState.playerState.file;
+        } else {
+            console.error("Invalid animation type:", animationType);
+        }
+    }
 }
 
-setAnimation("idle") // initial animation type
-animate();
+/***********************************
+ * Game Loop and Rendering
+ ***********************************/
+
+class GameLoop {
+    static animate(gameState) {
+        // Update game state
+        PlayerManager.handleInput(gameState);
+        PlayerManager.updatePosition(gameState);
+
+        // Calculate animation frame
+        const position = Math.floor(gameState.gameFrame / gameState.playerState.speed) % gameState.playerState.frames;
+        const frameX = SPRITE.width * position;
+
+        // Clear and redraw
+        ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        ctx.drawImage(gameState.backgroundImage, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        LevelManager.drawLevel(gameState);
+
+        // Draw player
+        ctx.drawImage(
+            gameState.playerImage,
+            frameX, 0,
+            SPRITE.width, SPRITE.height,
+            gameState.player.x, gameState.player.y,
+            SPRITE.width * SPRITE.scale,
+            SPRITE.height * SPRITE.scale
+        );
+
+        gameState.gameFrame++;
+        requestAnimationFrame(() => GameLoop.animate(gameState));
+    }
+}
+
+/***********************************
+ * Game Initialization
+ ***********************************/
+
+async function initGame() {
+    const gameState = new GameState();
+    PlayerManager.setAnimation(gameState, "idle");
+    await LevelManager.loadLevel("00", gameState);
+    GameLoop.animate(gameState);
+}
+
+// Start the game
+initGame();
