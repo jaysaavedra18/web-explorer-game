@@ -28,6 +28,7 @@ const SPRITE = {
     width: 128,
     height: 128,
     size: 0.5,
+    facingRight: true, // Manage player direction
 };
 
 // Tile Constants
@@ -68,7 +69,8 @@ class GameState {
             velocityX: 0,
             velocityY: 0,
             isJumping: false,
-            isOnGround: false
+            isOnGround: false,
+            facingRight: true,
         };
 
         // Input handling
@@ -172,9 +174,11 @@ class PlayerManager {
         // Horizontal movement
         if (keyStates["ArrowRight"]) {
             player.velocityX = PHYSICS.walkSpeed;
+            player.facingRight = true;
             this.setAnimation(gameState, "walk");
         } else if (keyStates["ArrowLeft"]) {
             player.velocityX = -PHYSICS.walkSpeed;
+            player.facingRight = false;
             this.setAnimation(gameState, "walk");
         } else {
             player.velocityX = 0;
@@ -242,15 +246,36 @@ class GameLoop {
         ctx.drawImage(gameState.backgroundImage, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
         LevelManager.drawLevel(gameState);
 
-        // Draw player
-        ctx.drawImage(
-            gameState.playerImage,
-            frameX, 0,
-            SPRITE.width, SPRITE.height,
-            gameState.player.x, gameState.player.y,
-            SPRITE.width * SPRITE.size,
-            SPRITE.height * SPRITE.size
-        );
+        // Save the current context state
+        ctx.save()
+
+        // Setup transformation for sprite flipping horizontally
+        if (!gameState.player.facingRight) {
+            // Draw player flipped
+            ctx.translate(gameState.player.x + SPRITE.width * SPRITE.size, gameState.player.y);
+            ctx.scale(-1, 1);
+            ctx.drawImage(
+                gameState.playerImage,
+                frameX, 0,
+                SPRITE.width, SPRITE.height,
+                0, 0,
+                SPRITE.width * SPRITE.size,
+                SPRITE.height * SPRITE.size
+            );
+
+        } else {
+            ctx.drawImage(
+                gameState.playerImage,
+                frameX, 0,
+                SPRITE.width, SPRITE.height,
+                gameState.player.x, gameState.player.y,
+                SPRITE.width * SPRITE.size,
+                SPRITE.height * SPRITE.size
+            );
+        }
+
+        ctx.restore();
+
 
         gameState.gameFrame++;
         requestAnimationFrame(() => GameLoop.animate(gameState));
