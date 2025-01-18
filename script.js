@@ -84,8 +84,8 @@ class GameState {
     }
 
     setupInputHandlers() {
-        window.addEventListener("keydown", (e) => this.keyStates[e.key] = true);
-        window.addEventListener("keyup", (e) => this.keyStates[e.key] = false);
+        window.addEventListener("keydown", (e) => this.keyStates[e.code] = true);
+        window.addEventListener("keyup", (e) => this.keyStates[e.code] = false);
     }
 
     loadBackgroundImage() {
