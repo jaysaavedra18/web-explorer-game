@@ -175,14 +175,14 @@ class PlayerManager {
         if (keyStates["ArrowRight"]) {
             player.velocityX = PHYSICS.walkSpeed;
             player.facingRight = true;
-            this.setAnimation(gameState, "walk");
+            if (!player.isJumping) this.setAnimation(gameState, "walk");
         } else if (keyStates["ArrowLeft"]) {
             player.velocityX = -PHYSICS.walkSpeed;
             player.facingRight = false;
-            this.setAnimation(gameState, "walk");
+            if (!player.isJumping) this.setAnimation(gameState, "walk");
         } else {
             player.velocityX = 0;
-            this.setAnimation(gameState, "idle");
+            if (!player.isJumping) this.setAnimation(gameState, "idle");
         }
 
         // Jump handling
