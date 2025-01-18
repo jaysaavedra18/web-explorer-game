@@ -27,7 +27,7 @@ const PHYSICS = {
 const SPRITE = {
     width: 128,
     height: 128,
-    scale: 0.5
+    size: 0.5,
 };
 
 // Tile Constants
@@ -64,7 +64,7 @@ class GameState {
         // Player position and movement
         this.player = {
             x: 35,
-            y: 450,
+            y: 400,
             velocityX: 0,
             velocityY: 0,
             isJumping: false,
@@ -248,8 +248,8 @@ class GameLoop {
             frameX, 0,
             SPRITE.width, SPRITE.height,
             gameState.player.x, gameState.player.y,
-            SPRITE.width * SPRITE.scale,
-            SPRITE.height * SPRITE.scale
+            SPRITE.width * SPRITE.size,
+            SPRITE.height * SPRITE.size
         );
 
         gameState.gameFrame++;
